@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    "helpers:pinGitHubActionDigestsToSemver",
+    "group:allNonMajor",
+    ":pinAllExceptPeerDependencies",
+    ":separateMultipleMajorReleases",
+    ":disableRateLimiting",
+  ],
+  "timezone": "Asia/Tokyo",
+  "schedule": ["every weekend"],
+  "minimumReleaseAge": "3 days",
+  "labels": ["renovate"],
+  // non-major は自動マージ
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true,
+    },
+  ],
+}
