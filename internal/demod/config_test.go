@@ -7,7 +7,7 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	t.Run("valid config", func(t *testing.T) {
+	t.Run("valid config with as", func(t *testing.T) {
 		content := `
 version = 1
 
@@ -16,8 +16,9 @@ name = "foo"
 repo = "https://github.com/example/foo"
 revision = "main"
 dest = "vendor/foo"
-paths = ["src"]
-stripPrefix = "src"
+paths = [
+  { src = "src/lib", as = "lib" },
+]
 `
 		path := writeTempConfig(t, content)
 		cfg, err := Load(path)
@@ -34,8 +35,58 @@ stripPrefix = "src"
 		if mod.Name != "foo" {
 			t.Errorf("name = %q, want %q", mod.Name, "foo")
 		}
-		if mod.StripPrefix != "src" {
-			t.Errorf("stripPrefix = %q, want %q", mod.StripPrefix, "src")
+		if mod.Paths[0].Src != "src/lib" {
+			t.Errorf("paths[0].src = %q, want %q", mod.Paths[0].Src, "src/lib")
+		}
+		if mod.Paths[0].As != "lib" {
+			t.Errorf("paths[0].as = %q, want %q", mod.Paths[0].As, "lib")
+		}
+	})
+
+	t.Run("valid config without as", func(t *testing.T) {
+		content := `
+version = 1
+
+[[modules]]
+name = "bar"
+repo = "https://github.com/example/bar"
+revision = "main"
+dest = "vendor/bar"
+paths = [
+  { src = "lib" },
+]
+`
+		path := writeTempConfig(t, content)
+		cfg, err := Load(path)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		mod := cfg.Modules[0]
+		if mod.Paths[0].Src != "lib" {
+			t.Errorf("paths[0].src = %q, want %q", mod.Paths[0].Src, "lib")
+		}
+		if mod.Paths[0].As != "" {
+			t.Errorf("paths[0].as = %q, want %q", mod.Paths[0].As, "")
+		}
+	})
+
+	t.Run("missing src in paths", func(t *testing.T) {
+		content := `
+version = 1
+
+[[modules]]
+name = "foo"
+repo = "https://github.com/example/foo"
+revision = "main"
+dest = "vendor/foo"
+paths = [
+  { as = "lib" },
+]
+`
+		path := writeTempConfig(t, content)
+		_, err := Load(path)
+		if err == nil {
+			t.Fatal("expected error for missing src in paths")
 		}
 	})
 
@@ -48,7 +99,7 @@ name = "foo"
 repo = "https://github.com/example/foo"
 revision = "main"
 dest = "vendor/foo"
-paths = ["src"]
+paths = [{ src = "src" }]
 `
 		path := writeTempConfig(t, content)
 		_, err := Load(path)
@@ -65,7 +116,7 @@ version = 1
 repo = "https://github.com/example/foo"
 revision = "main"
 dest = "vendor/foo"
-paths = ["src"]
+paths = [{ src = "src" }]
 `
 		path := writeTempConfig(t, content)
 		_, err := Load(path)
@@ -82,7 +133,7 @@ version = 1
 name = "foo"
 revision = "main"
 dest = "vendor/foo"
-paths = ["src"]
+paths = [{ src = "src" }]
 `
 		path := writeTempConfig(t, content)
 		_, err := Load(path)
@@ -99,7 +150,7 @@ version = 1
 name = "foo"
 repo = "https://github.com/example/foo"
 dest = "vendor/foo"
-paths = ["src"]
+paths = [{ src = "src" }]
 `
 		path := writeTempConfig(t, content)
 		_, err := Load(path)
@@ -116,7 +167,7 @@ version = 1
 name = "foo"
 repo = "https://github.com/example/foo"
 revision = "main"
-paths = ["src"]
+paths = [{ src = "src" }]
 `
 		path := writeTempConfig(t, content)
 		_, err := Load(path)

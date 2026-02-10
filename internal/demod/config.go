@@ -12,13 +12,17 @@ type Config struct {
 	Modules []Module `toml:"modules"`
 }
 
+type Path struct {
+	Src string `toml:"src"`
+	As  string `toml:"as"`
+}
+
 type Module struct {
-	Name        string   `toml:"name"`
-	Repo        string   `toml:"repo"`
-	Revision    string   `toml:"revision"`
-	Dest        string   `toml:"dest"`
-	Paths       []string `toml:"paths"`
-	StripPrefix string   `toml:"stripPrefix"`
+	Name     string `toml:"name"`
+	Repo     string `toml:"repo"`
+	Revision string `toml:"revision"`
+	Dest     string `toml:"dest"`
+	Paths    []Path `toml:"paths"`
 }
 
 func Load(path string) (*Config, error) {
@@ -51,6 +55,11 @@ func Load(path string) (*Config, error) {
 		}
 		if len(mod.Paths) == 0 {
 			return nil, fmt.Errorf("modules[%d] (%s): paths is required", i, mod.Name)
+		}
+		for j, p := range mod.Paths {
+			if p.Src == "" {
+				return nil, fmt.Errorf("modules[%d] (%s): paths[%d].src is required", i, mod.Name, j)
+			}
 		}
 	}
 

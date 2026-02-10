@@ -29,7 +29,7 @@ func TestCopyFile(t *testing.T) {
 }
 
 func TestCopyDir(t *testing.T) {
-	t.Run("without stripPrefix", func(t *testing.T) {
+	t.Run("with destPath", func(t *testing.T) {
 		srcDir := t.TempDir()
 		destDir := t.TempDir()
 
@@ -44,7 +44,7 @@ func TestCopyDir(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := copyDir(srcDir, destDir, "lib", ""); err != nil {
+		if err := copyDir(srcDir, destDir, "lib"); err != nil {
 			t.Fatalf("copyDir: %v", err)
 		}
 
@@ -53,7 +53,7 @@ func TestCopyDir(t *testing.T) {
 		assertFileContent(t, filepath.Join(destDir, "lib", "sub", "b.txt"), "bbb")
 	})
 
-	t.Run("with stripPrefix", func(t *testing.T) {
+	t.Run("with nested destPath", func(t *testing.T) {
 		srcDir := t.TempDir()
 		destDir := t.TempDir()
 
@@ -61,15 +61,15 @@ func TestCopyDir(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// path="src/lib", stripPrefix="src" → dest path should be "lib"
-		if err := copyDir(srcDir, destDir, "src/lib", "src"); err != nil {
+		// destPath="lib" → files at destDir/lib/a.txt
+		if err := copyDir(srcDir, destDir, "lib"); err != nil {
 			t.Fatalf("copyDir: %v", err)
 		}
 
 		assertFileContent(t, filepath.Join(destDir, "lib", "a.txt"), "aaa")
 	})
 
-	t.Run("stripPrefix removes full path", func(t *testing.T) {
+	t.Run("empty destPath copies to root", func(t *testing.T) {
 		srcDir := t.TempDir()
 		destDir := t.TempDir()
 
@@ -77,8 +77,8 @@ func TestCopyDir(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// path="src", stripPrefix="src" → dest path should be root
-		if err := copyDir(srcDir, destDir, "src", "src"); err != nil {
+		// destPath="" → files at destDir/a.txt
+		if err := copyDir(srcDir, destDir, ""); err != nil {
 			t.Fatalf("copyDir: %v", err)
 		}
 

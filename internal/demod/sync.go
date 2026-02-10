@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 func SyncAll(cfg *Config) error {
@@ -36,7 +35,11 @@ func SyncModule(mod Module) error {
 		return fmt.Errorf("[%s] %w", mod.Name, err)
 	}
 
-	if err := gitSparseCheckoutSet(workdir, mod.Paths); err != nil {
+	srcPaths := make([]string, len(mod.Paths))
+	for i, p := range mod.Paths {
+		srcPaths[i] = p.Src
+	}
+	if err := gitSparseCheckoutSet(workdir, srcPaths); err != nil {
 		return fmt.Errorf("[%s] %w", mod.Name, err)
 	}
 
@@ -52,8 +55,12 @@ func SyncModule(mod Module) error {
 	}
 
 	for _, p := range mod.Paths {
-		src := filepath.Join(workdir, p)
-		if err := copyDir(src, mod.Dest, p, mod.StripPrefix); err != nil {
+		src := filepath.Join(workdir, p.Src)
+		destPath := p.As
+		if destPath == "" {
+			destPath = p.Src
+		}
+		if err := copyDir(src, mod.Dest, destPath); err != nil {
 			return fmt.Errorf("[%s] copying: %w", mod.Name, err)
 		}
 	}
@@ -61,7 +68,7 @@ func SyncModule(mod Module) error {
 	return nil
 }
 
-func copyDir(src, dest, path, stripPrefix string) error {
+func copyDir(src, dest, destPath string) error {
 	return filepath.Walk(src, func(fpath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -70,13 +77,6 @@ func copyDir(src, dest, path, stripPrefix string) error {
 		rel, err := filepath.Rel(src, fpath)
 		if err != nil {
 			return err
-		}
-
-		// Build destination path: dest + path (with stripPrefix applied) + rel
-		destPath := path
-		if stripPrefix != "" {
-			destPath = strings.TrimPrefix(destPath, stripPrefix)
-			destPath = strings.TrimPrefix(destPath, string(filepath.Separator))
 		}
 
 		target := filepath.Join(dest, destPath, rel)
