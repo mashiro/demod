@@ -11,6 +11,8 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+var version = "dev"
+
 func main() {
 	app := &cli.Command{
 		Name:  "demod",
@@ -34,6 +36,14 @@ func main() {
 			},
 		},
 		Commands: []*cli.Command{
+			{
+				Name:  "version",
+				Usage: "Print the version",
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					fmt.Println(version)
+					return nil
+				},
+			},
 			{
 				Name:  "sync",
 				Usage: "Sync all modules defined in config",
