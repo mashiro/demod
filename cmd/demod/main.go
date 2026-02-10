@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
+	"github.com/lmittmann/tint"
 	"github.com/mashiro/demod/internal/demod"
 	"github.com/urfave/cli/v3"
 )
@@ -19,6 +21,16 @@ func main() {
 				Aliases: []string{"c"},
 				Value:   "demod.toml",
 				Usage:   "Path to config file",
+			},
+			&cli.StringFlag{
+				Name:    "format",
+				Aliases: []string{"f"},
+				Value:   "text",
+				Usage:   "Log format (text, json)",
+			},
+			&cli.BoolFlag{
+				Name:  "no-color",
+				Usage: "Disable colored output",
 			},
 		},
 		Commands: []*cli.Command{
@@ -37,7 +49,11 @@ func main() {
 					if err != nil {
 						return err
 					}
-					return demod.SyncAll(cfg, cmd.Bool("dry-run"))
+					logger := buildLogger(cmd.Root().String("format"), cmd.Root().Bool("no-color"))
+					return demod.SyncAll(cfg, demod.SyncOptions{
+						DryRun: cmd.Bool("dry-run"),
+						Logger: logger,
+					})
 				},
 			},
 		},
@@ -46,5 +62,19 @@ func main() {
 	if err := app.Run(context.Background(), os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+func buildLogger(format string, noColor bool) *slog.Logger {
+	switch format {
+	case "json":
+		return slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	default:
+		return slog.New(demod.NewModuleHandler(
+			tint.NewHandler(os.Stderr, &tint.Options{
+				TimeFormat: " ",
+				NoColor:    noColor,
+			}),
+		))
 	}
 }

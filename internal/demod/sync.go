@@ -5,13 +5,26 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 
 	"golang.org/x/sync/errgroup"
 )
 
-func SyncAll(cfg *Config, dryRun bool) error {
+type SyncOptions struct {
+	DryRun bool
+	Logger *slog.Logger
+}
+
+func (o SyncOptions) logger() *slog.Logger {
+	if o.Logger != nil {
+		return o.Logger
+	}
+	return slog.Default()
+}
+
+func SyncAll(cfg *Config, opts SyncOptions) error {
 	g, ctx := errgroup.WithContext(context.Background())
 	for _, mod := range cfg.Modules {
 		g.Go(func() error {
@@ -19,18 +32,20 @@ func SyncAll(cfg *Config, dryRun bool) error {
 			case <-ctx.Done():
 				return ctx.Err()
 			default:
-				return SyncModule(mod, dryRun)
+				return SyncModule(mod, opts)
 			}
 		})
 	}
 	if err := g.Wait(); err != nil {
 		return err
 	}
-	fmt.Println("Done.")
+	opts.logger().Info("done")
 	return nil
 }
 
-func SyncModule(mod Module, dryRun bool) error {
+func SyncModule(mod Module, opts SyncOptions) error {
+	logger := opts.logger()
+
 	tmpdir, err := os.MkdirTemp("", "demod-*")
 	if err != nil {
 		return fmt.Errorf("[%s] creating temp dir: %w", mod.Name, err)
@@ -39,7 +54,7 @@ func SyncModule(mod Module, dryRun bool) error {
 
 	workdir := filepath.Join(tmpdir, "repo")
 
-	fmt.Printf("[%s] cloning...\n", mod.Name)
+	logger.Info("cloning", "module", mod.Name)
 	if err := gitClone(mod.Repo, workdir); err != nil {
 		return fmt.Errorf("[%s] %w", mod.Name, err)
 	}
@@ -56,24 +71,24 @@ func SyncModule(mod Module, dryRun bool) error {
 		return fmt.Errorf("[%s] %w", mod.Name, err)
 	}
 
-	fmt.Printf("[%s] checkout %s\n", mod.Name, mod.Revision)
+	logger.Info("checkout", "module", mod.Name, "revision", mod.Revision)
 	if err := gitCheckout(workdir, mod.Revision); err != nil {
 		return fmt.Errorf("[%s] %w", mod.Name, err)
 	}
 
-	if dryRun {
-		fmt.Printf("[%s] would sync to %s\n", mod.Name, mod.Dest)
+	if opts.DryRun {
+		logger.Info("would sync", "module", mod.Name, "dest", mod.Dest)
 		for _, p := range mod.Paths {
 			destPath := p.As
 			if destPath == "" {
 				destPath = p.Src
 			}
-			fmt.Printf("[%s]   %s -> %s\n", mod.Name, p.Src, filepath.Join(mod.Dest, destPath))
+			logger.Info("would copy", "module", mod.Name, "src", p.Src, "dest", filepath.Join(mod.Dest, destPath))
 		}
 		return nil
 	}
 
-	fmt.Printf("[%s] syncing to %s\n", mod.Name, mod.Dest)
+	logger.Info("syncing", "module", mod.Name, "dest", mod.Dest)
 
 	if err := os.RemoveAll(mod.Dest); err != nil {
 		return fmt.Errorf("[%s] removing dest: %w", mod.Name, err)

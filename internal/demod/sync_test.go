@@ -98,7 +98,7 @@ func TestSyncModule(t *testing.T) {
 			Dest:     dest,
 			Paths:    []Path{{Src: "src/lib", As: "lib"}},
 		}
-		if err := SyncModule(mod, false); err != nil {
+		if err := SyncModule(mod, SyncOptions{}); err != nil {
 			t.Fatalf("SyncModule: %v", err)
 		}
 		assertFileContent(t, filepath.Join(dest, "lib", "a.txt"), "aaa")
@@ -114,7 +114,7 @@ func TestSyncModule(t *testing.T) {
 			Dest:     dest,
 			Paths:    []Path{{Src: "docs"}},
 		}
-		if err := SyncModule(mod, false); err != nil {
+		if err := SyncModule(mod, SyncOptions{}); err != nil {
 			t.Fatalf("SyncModule: %v", err)
 		}
 		assertFileContent(t, filepath.Join(dest, "docs", "readme.txt"), "readme")
@@ -129,7 +129,7 @@ func TestSyncModule(t *testing.T) {
 			Dest:     dest,
 			Paths:    []Path{{Src: "src/lib", As: "lib"}},
 		}
-		if err := SyncModule(mod, true); err != nil {
+		if err := SyncModule(mod, SyncOptions{DryRun: true}); err != nil {
 			t.Fatalf("SyncModule dry-run: %v", err)
 		}
 		if _, err := os.Stat(dest); !os.IsNotExist(err) {
@@ -149,7 +149,7 @@ func TestSyncModule(t *testing.T) {
 				{Src: "docs"},
 			},
 		}
-		if err := SyncModule(mod, false); err != nil {
+		if err := SyncModule(mod, SyncOptions{}); err != nil {
 			t.Fatalf("SyncModule: %v", err)
 		}
 		assertFileContent(t, filepath.Join(dest, "lib", "a.txt"), "aaa")
