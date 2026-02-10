@@ -86,6 +86,77 @@ func TestCopyDir(t *testing.T) {
 	})
 }
 
+func TestSyncModule(t *testing.T) {
+	bare := setupBareRepo(t)
+
+	t.Run("with as", func(t *testing.T) {
+		dest := filepath.Join(t.TempDir(), "dest")
+		mod := Module{
+			Name:     "test",
+			Repo:     bare,
+			Revision: "main",
+			Dest:     dest,
+			Paths:    []Path{{Src: "src/lib", As: "lib"}},
+		}
+		if err := SyncModule(mod, false); err != nil {
+			t.Fatalf("SyncModule: %v", err)
+		}
+		assertFileContent(t, filepath.Join(dest, "lib", "a.txt"), "aaa")
+		assertFileContent(t, filepath.Join(dest, "lib", "b.txt"), "bbb")
+	})
+
+	t.Run("without as", func(t *testing.T) {
+		dest := filepath.Join(t.TempDir(), "dest")
+		mod := Module{
+			Name:     "test",
+			Repo:     bare,
+			Revision: "main",
+			Dest:     dest,
+			Paths:    []Path{{Src: "docs"}},
+		}
+		if err := SyncModule(mod, false); err != nil {
+			t.Fatalf("SyncModule: %v", err)
+		}
+		assertFileContent(t, filepath.Join(dest, "docs", "readme.txt"), "readme")
+	})
+
+	t.Run("dry-run does not write files", func(t *testing.T) {
+		dest := filepath.Join(t.TempDir(), "dest")
+		mod := Module{
+			Name:     "test",
+			Repo:     bare,
+			Revision: "main",
+			Dest:     dest,
+			Paths:    []Path{{Src: "src/lib", As: "lib"}},
+		}
+		if err := SyncModule(mod, true); err != nil {
+			t.Fatalf("SyncModule dry-run: %v", err)
+		}
+		if _, err := os.Stat(dest); !os.IsNotExist(err) {
+			t.Errorf("expected dest dir to not exist in dry-run, got err: %v", err)
+		}
+	})
+
+	t.Run("multiple paths", func(t *testing.T) {
+		dest := filepath.Join(t.TempDir(), "dest")
+		mod := Module{
+			Name:     "test",
+			Repo:     bare,
+			Revision: "main",
+			Dest:     dest,
+			Paths: []Path{
+				{Src: "src/lib", As: "lib"},
+				{Src: "docs"},
+			},
+		}
+		if err := SyncModule(mod, false); err != nil {
+			t.Fatalf("SyncModule: %v", err)
+		}
+		assertFileContent(t, filepath.Join(dest, "lib", "a.txt"), "aaa")
+		assertFileContent(t, filepath.Join(dest, "docs", "readme.txt"), "readme")
+	})
+}
+
 func assertFileContent(t *testing.T, path, want string) {
 	t.Helper()
 	got, err := os.ReadFile(path)

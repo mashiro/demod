@@ -25,13 +25,19 @@ func main() {
 			{
 				Name:  "sync",
 				Usage: "Sync all modules defined in config",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "dry-run",
+						Usage: "Show what would be synced without making changes",
+					},
+				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					cfgPath := cmd.Root().String("config")
 					cfg, err := demod.Load(cfgPath)
 					if err != nil {
 						return err
 					}
-					return demod.SyncAll(cfg)
+					return demod.SyncAll(cfg, cmd.Bool("dry-run"))
 				},
 			},
 		},

@@ -193,6 +193,67 @@ dest = "vendor/foo"
 		}
 	})
 
+	t.Run("duplicate dest path", func(t *testing.T) {
+		content := `
+version = 1
+
+[[modules]]
+name = "foo"
+repo = "https://github.com/example/foo"
+revision = "main"
+dest = "vendor/foo"
+paths = [
+  { src = "src/a", as = "lib" },
+  { src = "src/b", as = "lib" },
+]
+`
+		path := writeTempConfig(t, content)
+		_, err := Load(path)
+		if err == nil {
+			t.Fatal("expected error for duplicate dest path")
+		}
+	})
+
+	t.Run("path traversal in as", func(t *testing.T) {
+		content := `
+version = 1
+
+[[modules]]
+name = "foo"
+repo = "https://github.com/example/foo"
+revision = "main"
+dest = "vendor/foo"
+paths = [
+  { src = "src/lib", as = "../escape" },
+]
+`
+		path := writeTempConfig(t, content)
+		_, err := Load(path)
+		if err == nil {
+			t.Fatal("expected error for path traversal in as")
+		}
+	})
+
+	t.Run("path traversal in src used as dest", func(t *testing.T) {
+		content := `
+version = 1
+
+[[modules]]
+name = "foo"
+repo = "https://github.com/example/foo"
+revision = "main"
+dest = "vendor/foo"
+paths = [
+  { src = "../escape" },
+]
+`
+		path := writeTempConfig(t, content)
+		_, err := Load(path)
+		if err == nil {
+			t.Fatal("expected error for path traversal in src used as dest")
+		}
+	})
+
 	t.Run("file not found", func(t *testing.T) {
 		_, err := Load("/nonexistent/path/demod.toml")
 		if err == nil {

@@ -3,6 +3,8 @@ package demod
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 )
@@ -56,10 +58,26 @@ func Load(path string) (*Config, error) {
 		if len(mod.Paths) == 0 {
 			return nil, fmt.Errorf("modules[%d] (%s): paths is required", i, mod.Name)
 		}
+		seen := make(map[string]struct{})
 		for j, p := range mod.Paths {
 			if p.Src == "" {
 				return nil, fmt.Errorf("modules[%d] (%s): paths[%d].src is required", i, mod.Name, j)
 			}
+
+			destPath := p.As
+			if destPath == "" {
+				destPath = p.Src
+			}
+
+			cleaned := filepath.Clean(destPath)
+			if cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(filepath.Separator)) {
+				return nil, fmt.Errorf("modules[%d] (%s): paths[%d] has invalid dest path %q: path traversal is not allowed", i, mod.Name, j, destPath)
+			}
+
+			if _, ok := seen[cleaned]; ok {
+				return nil, fmt.Errorf("modules[%d] (%s): duplicate dest path %q in paths", i, mod.Name, cleaned)
+			}
+			seen[cleaned] = struct{}{}
 		}
 	}
 
