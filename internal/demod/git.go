@@ -19,15 +19,7 @@ func runGit(logger *slog.Logger, workdir string, args ...string) error {
 }
 
 func gitClone(logger *slog.Logger, repo, workdir string) error {
-	args := []string{"clone", "--filter=blob:none", "--no-checkout", "--depth", "1", repo, workdir}
-	logger.Debug("exec", "cmd", "git", "args", args)
-	cmd := exec.Command("git", args...)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git clone: %w\n%s", err, out)
-	}
-	logger.Debug("output", "result", string(out))
-	return nil
+	return runGit(logger, "", "clone", "--filter=blob:none", "--no-checkout", "--depth", "1", repo, workdir)
 }
 
 func gitSparseCheckoutInit(logger *slog.Logger, workdir string) error {
