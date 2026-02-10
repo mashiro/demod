@@ -13,20 +13,20 @@ func main() {
 	app := &cli.Command{
 		Name:  "demod",
 		Usage: "Declarative git module synchronizer",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "config",
+				Aliases: []string{"c"},
+				Value:   "demod.toml",
+				Usage:   "Path to config file",
+			},
+		},
 		Commands: []*cli.Command{
 			{
 				Name:  "sync",
 				Usage: "Sync all modules defined in config",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:    "file",
-						Aliases: []string{"f"},
-						Value:   "demod.toml",
-						Usage:   "Path to config file",
-					},
-				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					cfgPath := cmd.String("file")
+					cfgPath := cmd.Root().String("config")
 					cfg, err := demod.Load(cfgPath)
 					if err != nil {
 						return err
