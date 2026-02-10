@@ -45,7 +45,7 @@ func SyncAll(cfg *Config, opts SyncOptions) error {
 }
 
 func SyncModule(mod Module, opts SyncOptions) error {
-	logger := opts.logger()
+	logger := WithModule(opts.logger(), mod.Name)
 
 	tmpdir, err := os.MkdirTemp("", "demod-*")
 	if err != nil {
@@ -55,12 +55,12 @@ func SyncModule(mod Module, opts SyncOptions) error {
 
 	workdir := filepath.Join(tmpdir, "repo")
 
-	logger.Info("cloning", "module", mod.Name)
-	if err := gitClone(mod.Repo, workdir); err != nil {
+	logger.Info("cloning")
+	if err := gitClone(logger, mod.Repo, workdir); err != nil {
 		return fmt.Errorf("[%s] %w", mod.Name, err)
 	}
 
-	if err := gitSparseCheckoutInit(workdir); err != nil {
+	if err := gitSparseCheckoutInit(logger, workdir); err != nil {
 		return fmt.Errorf("[%s] %w", mod.Name, err)
 	}
 
@@ -68,28 +68,28 @@ func SyncModule(mod Module, opts SyncOptions) error {
 	for i, p := range mod.Paths {
 		srcPaths[i] = p.Src
 	}
-	if err := gitSparseCheckoutSet(workdir, srcPaths); err != nil {
+	if err := gitSparseCheckoutSet(logger, workdir, srcPaths); err != nil {
 		return fmt.Errorf("[%s] %w", mod.Name, err)
 	}
 
-	logger.Info("checkout", "module", mod.Name, "revision", mod.Revision)
-	if err := gitCheckout(workdir, mod.Revision); err != nil {
+	logger.Info("checkout", "revision", mod.Revision)
+	if err := gitCheckout(logger, workdir, mod.Revision); err != nil {
 		return fmt.Errorf("[%s] %w", mod.Name, err)
 	}
 
 	if opts.DryRun {
-		logger.Info("would sync", "module", mod.Name, "dest", mod.Dest)
+		logger.Info("would sync", "dest", mod.Dest)
 		for _, p := range mod.Paths {
 			destPath := p.As
 			if destPath == "" {
 				destPath = p.Src
 			}
-			logger.Info("would copy", "module", mod.Name, "src", p.Src, "dest", filepath.Join(mod.Dest, destPath), "exclude", p.Exclude)
+			logger.Info("would copy", "src", p.Src, "dest", filepath.Join(mod.Dest, destPath), "exclude", p.Exclude)
 		}
 		return nil
 	}
 
-	logger.Info("syncing", "module", mod.Name, "dest", mod.Dest)
+	logger.Info("syncing", "dest", mod.Dest)
 
 	if err := os.RemoveAll(mod.Dest); err != nil {
 		return fmt.Errorf("[%s] removing dest: %w", mod.Name, err)

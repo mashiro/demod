@@ -1,6 +1,7 @@
 package demod
 
 import (
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,29 +9,32 @@ import (
 )
 
 func TestRunGit(t *testing.T) {
+	logger := slog.Default()
+
 	t.Run("success", func(t *testing.T) {
 		dir := t.TempDir()
 		if err := exec.Command("git", "init", dir).Run(); err != nil {
 			t.Fatal(err)
 		}
-		if err := runGit(dir, "status"); err != nil {
+		if err := runGit(logger, dir, "status"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
 
 	t.Run("error", func(t *testing.T) {
 		dir := t.TempDir()
-		if err := runGit(dir, "checkout", "nonexistent"); err == nil {
+		if err := runGit(logger, dir, "checkout", "nonexistent"); err == nil {
 			t.Fatal("expected error for invalid git command")
 		}
 	})
 }
 
 func TestGitClone(t *testing.T) {
+	logger := slog.Default()
 	bare := setupBareRepo(t)
 	workdir := filepath.Join(t.TempDir(), "repo")
 
-	if err := gitClone(bare, workdir); err != nil {
+	if err := gitClone(logger, bare, workdir); err != nil {
 		t.Fatalf("gitClone: %v", err)
 	}
 
@@ -40,22 +44,23 @@ func TestGitClone(t *testing.T) {
 }
 
 func TestGitSparseCheckout(t *testing.T) {
+	logger := slog.Default()
 	bare := setupBareRepo(t)
 	workdir := filepath.Join(t.TempDir(), "repo")
 
-	if err := gitClone(bare, workdir); err != nil {
+	if err := gitClone(logger, bare, workdir); err != nil {
 		t.Fatalf("gitClone: %v", err)
 	}
 
-	if err := gitSparseCheckoutInit(workdir); err != nil {
+	if err := gitSparseCheckoutInit(logger, workdir); err != nil {
 		t.Fatalf("gitSparseCheckoutInit: %v", err)
 	}
 
-	if err := gitSparseCheckoutSet(workdir, []string{"src/lib"}); err != nil {
+	if err := gitSparseCheckoutSet(logger, workdir, []string{"src/lib"}); err != nil {
 		t.Fatalf("gitSparseCheckoutSet: %v", err)
 	}
 
-	if err := gitCheckout(workdir, "main"); err != nil {
+	if err := gitCheckout(logger, workdir, "main"); err != nil {
 		t.Fatalf("gitCheckout: %v", err)
 	}
 

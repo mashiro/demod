@@ -34,6 +34,11 @@ func main() {
 				Name:  "no-color",
 				Usage: "Disable colored output",
 			},
+			&cli.BoolFlag{
+				Name:    "verbose",
+				Aliases: []string{"v"},
+				Usage:   "Enable verbose (debug) logging",
+			},
 		},
 		Commands: []*cli.Command{
 			{
@@ -59,7 +64,7 @@ func main() {
 					if err != nil {
 						return err
 					}
-					logger := buildLogger(cmd.Root().String("format"), cmd.Root().Bool("no-color"))
+					logger := buildLogger(cmd.Root().String("format"), cmd.Root().Bool("no-color"), cmd.Root().Bool("verbose"))
 					return demod.SyncAll(cfg, demod.SyncOptions{
 						DryRun: cmd.Bool("dry-run"),
 						Logger: logger,
@@ -75,13 +80,18 @@ func main() {
 	}
 }
 
-func buildLogger(format string, noColor bool) *slog.Logger {
+func buildLogger(format string, noColor, verbose bool) *slog.Logger {
+	var level slog.Level
+	if verbose {
+		level = slog.LevelDebug
+	}
 	switch format {
 	case "json":
-		return slog.New(slog.NewJSONHandler(os.Stderr, nil))
+		return slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 	default:
 		return slog.New(demod.NewModuleHandler(
 			tint.NewHandler(os.Stderr, &tint.Options{
+				Level:      level,
 				TimeFormat: " ",
 				NoColor:    noColor,
 			}),
