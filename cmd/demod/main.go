@@ -95,6 +95,7 @@ func buildLogger(format string, noColor, verbose bool) *slog.Logger {
 				TimeFormat: " ",
 				NoColor:    noColor,
 			}),
+			noColor,
 		))
 	}
 }
