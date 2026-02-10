@@ -10,13 +10,15 @@ import (
 )
 
 type Config struct {
-	Version int      `toml:"version"`
-	Modules []Module `toml:"modules"`
+	Version  int      `toml:"version"`
+	DestRoot string   `toml:"dest_root"`
+	Modules  []Module `toml:"modules"`
 }
 
 type Path struct {
-	Src string `toml:"src"`
-	As  string `toml:"as"`
+	Src     string   `toml:"src"`
+	As      string   `toml:"as"`
+	Exclude []string `toml:"exclude"`
 }
 
 type Module struct {
@@ -38,6 +40,9 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("parsing config: %w", err)
 	}
 
+	if cfg.Version == 0 {
+		cfg.Version = 1
+	}
 	if cfg.Version != 1 {
 		return nil, fmt.Errorf("unsupported config version: %d (expected 1)", cfg.Version)
 	}
@@ -78,6 +83,12 @@ func Load(path string) (*Config, error) {
 				return nil, fmt.Errorf("modules[%d] (%s): duplicate dest path %q in paths", i, mod.Name, cleaned)
 			}
 			seen[cleaned] = struct{}{}
+		}
+	}
+
+	if cfg.DestRoot != "" {
+		for i := range cfg.Modules {
+			cfg.Modules[i].Dest = filepath.Join(cfg.DestRoot, cfg.Modules[i].Dest)
 		}
 	}
 

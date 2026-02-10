@@ -16,7 +16,7 @@ func runGit(workdir string, args ...string) error {
 }
 
 func gitClone(repo, workdir string) error {
-	cmd := exec.Command("git", "clone", "--filter=blob:none", "--no-checkout", repo, workdir)
+	cmd := exec.Command("git", "clone", "--filter=blob:none", "--no-checkout", "--depth", "1", repo, workdir)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("git clone: %w\n%s", err, out)

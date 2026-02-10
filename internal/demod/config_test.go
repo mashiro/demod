@@ -90,6 +90,25 @@ paths = [
 		}
 	})
 
+	t.Run("version defaults to 1", func(t *testing.T) {
+		content := `
+[[modules]]
+name = "foo"
+repo = "https://github.com/example/foo"
+revision = "main"
+dest = "vendor/foo"
+paths = [{ src = "src" }]
+`
+		path := writeTempConfig(t, content)
+		cfg, err := Load(path)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.Version != 1 {
+			t.Errorf("version = %d, want 1", cfg.Version)
+		}
+	})
+
 	t.Run("unsupported version", func(t *testing.T) {
 		content := `
 version = 2
@@ -251,6 +270,71 @@ paths = [
 		_, err := Load(path)
 		if err == nil {
 			t.Fatal("expected error for path traversal in src used as dest")
+		}
+	})
+
+	t.Run("dest_root is joined with module dest", func(t *testing.T) {
+		content := `
+version = 1
+dest_root = "vendor"
+
+[[modules]]
+name = "foo"
+repo = "https://github.com/example/foo"
+revision = "main"
+dest = "foo"
+paths = [{ src = "src" }]
+
+[[modules]]
+name = "bar"
+repo = "https://github.com/example/bar"
+revision = "main"
+dest = "bar"
+paths = [{ src = "lib" }]
+`
+		path := writeTempConfig(t, content)
+		cfg, err := Load(path)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.DestRoot != "vendor" {
+			t.Errorf("dest_root = %q, want %q", cfg.DestRoot, "vendor")
+		}
+		if cfg.Modules[0].Dest != filepath.Join("vendor", "foo") {
+			t.Errorf("modules[0].dest = %q, want %q", cfg.Modules[0].Dest, filepath.Join("vendor", "foo"))
+		}
+		if cfg.Modules[1].Dest != filepath.Join("vendor", "bar") {
+			t.Errorf("modules[1].dest = %q, want %q", cfg.Modules[1].Dest, filepath.Join("vendor", "bar"))
+		}
+	})
+
+	t.Run("exclude is parsed in path", func(t *testing.T) {
+		content := `
+version = 1
+
+[[modules]]
+name = "foo"
+repo = "https://github.com/example/foo"
+revision = "main"
+dest = "vendor/foo"
+paths = [
+  { src = "src", exclude = ["BUILD.bazel", "*.md"] },
+]
+`
+		path := writeTempConfig(t, content)
+		cfg, err := Load(path)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		p := cfg.Modules[0].Paths[0]
+		if len(p.Exclude) != 2 {
+			t.Fatalf("len(exclude) = %d, want 2", len(p.Exclude))
+		}
+		if p.Exclude[0] != "BUILD.bazel" {
+			t.Errorf("exclude[0] = %q, want %q", p.Exclude[0], "BUILD.bazel")
+		}
+		if p.Exclude[1] != "*.md" {
+			t.Errorf("exclude[1] = %q, want %q", p.Exclude[1], "*.md")
 		}
 	})
 

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -83,7 +84,7 @@ func SyncModule(mod Module, opts SyncOptions) error {
 			if destPath == "" {
 				destPath = p.Src
 			}
-			logger.Info("would copy", "module", mod.Name, "src", p.Src, "dest", filepath.Join(mod.Dest, destPath))
+			logger.Info("would copy", "module", mod.Name, "src", p.Src, "dest", filepath.Join(mod.Dest, destPath), "exclude", p.Exclude)
 		}
 		return nil
 	}
@@ -100,7 +101,7 @@ func SyncModule(mod Module, opts SyncOptions) error {
 		if destPath == "" {
 			destPath = p.Src
 		}
-		if err := copyDir(src, mod.Dest, destPath); err != nil {
+		if err := copyDir(src, mod.Dest, destPath, p.Exclude); err != nil {
 			return fmt.Errorf("[%s] copying: %w", mod.Name, err)
 		}
 	}
@@ -108,7 +109,7 @@ func SyncModule(mod Module, opts SyncOptions) error {
 	return nil
 }
 
-func copyDir(src, dest, destPath string) error {
+func copyDir(src, dest, destPath string, exclude []string) error {
 	return filepath.WalkDir(src, func(fpath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -117,6 +118,21 @@ func copyDir(src, dest, destPath string) error {
 		rel, err := filepath.Rel(src, fpath)
 		if err != nil {
 			return err
+		}
+
+		if rel != "." {
+			for _, pattern := range exclude {
+				matched, matchErr := doublestar.Match(pattern, rel)
+				if matchErr != nil {
+					return fmt.Errorf("invalid exclude pattern %q: %w", pattern, matchErr)
+				}
+				if matched {
+					if d.IsDir() {
+						return fs.SkipDir
+					}
+					return nil
+				}
+			}
 		}
 
 		target := filepath.Join(dest, destPath, rel)

@@ -44,7 +44,7 @@ func TestCopyDir(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := copyDir(srcDir, destDir, "lib"); err != nil {
+		if err := copyDir(srcDir, destDir, "lib", nil); err != nil {
 			t.Fatalf("copyDir: %v", err)
 		}
 
@@ -62,7 +62,7 @@ func TestCopyDir(t *testing.T) {
 		}
 
 		// destPath="lib" → files at destDir/lib/a.txt
-		if err := copyDir(srcDir, destDir, "lib"); err != nil {
+		if err := copyDir(srcDir, destDir, "lib", nil); err != nil {
 			t.Fatalf("copyDir: %v", err)
 		}
 
@@ -78,11 +78,62 @@ func TestCopyDir(t *testing.T) {
 		}
 
 		// destPath="" → files at destDir/a.txt
-		if err := copyDir(srcDir, destDir, ""); err != nil {
+		if err := copyDir(srcDir, destDir, "", nil); err != nil {
 			t.Fatalf("copyDir: %v", err)
 		}
 
 		assertFileContent(t, filepath.Join(destDir, "a.txt"), "aaa")
+	})
+
+	t.Run("exclude filters files", func(t *testing.T) {
+		srcDir := t.TempDir()
+		destDir := t.TempDir()
+
+		if err := os.WriteFile(filepath.Join(srcDir, "a.txt"), []byte("aaa"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(srcDir, "BUILD.bazel"), []byte("build"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(srcDir, "README.md"), []byte("readme"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := copyDir(srcDir, destDir, "lib", []string{"BUILD.bazel", "*.md"}); err != nil {
+			t.Fatalf("copyDir: %v", err)
+		}
+
+		assertFileContent(t, filepath.Join(destDir, "lib", "a.txt"), "aaa")
+		if _, err := os.Stat(filepath.Join(destDir, "lib", "BUILD.bazel")); !os.IsNotExist(err) {
+			t.Errorf("expected BUILD.bazel to be excluded")
+		}
+		if _, err := os.Stat(filepath.Join(destDir, "lib", "README.md")); !os.IsNotExist(err) {
+			t.Errorf("expected README.md to be excluded")
+		}
+	})
+
+	t.Run("exclude filters directories with doublestar", func(t *testing.T) {
+		srcDir := t.TempDir()
+		destDir := t.TempDir()
+
+		if err := os.WriteFile(filepath.Join(srcDir, "a.txt"), []byte("aaa"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(srcDir, "testdata", "nested"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(srcDir, "testdata", "nested", "x.txt"), []byte("xxx"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := copyDir(srcDir, destDir, "lib", []string{"testdata/**"}); err != nil {
+			t.Fatalf("copyDir: %v", err)
+		}
+
+		assertFileContent(t, filepath.Join(destDir, "lib", "a.txt"), "aaa")
+		if _, err := os.Stat(filepath.Join(destDir, "lib", "testdata", "nested", "x.txt")); !os.IsNotExist(err) {
+			t.Errorf("expected testdata/nested/x.txt to be excluded")
+		}
 	})
 }
 
@@ -134,6 +185,24 @@ func TestSyncModule(t *testing.T) {
 		}
 		if _, err := os.Stat(dest); !os.IsNotExist(err) {
 			t.Errorf("expected dest dir to not exist in dry-run, got err: %v", err)
+		}
+	})
+
+	t.Run("exclude filters files", func(t *testing.T) {
+		dest := filepath.Join(t.TempDir(), "dest")
+		mod := Module{
+			Name:     "test",
+			Repo:     bare,
+			Revision: "main",
+			Dest:     dest,
+			Paths:    []Path{{Src: "src/lib", As: "lib", Exclude: []string{"b.txt"}}},
+		}
+		if err := SyncModule(mod, SyncOptions{}); err != nil {
+			t.Fatalf("SyncModule: %v", err)
+		}
+		assertFileContent(t, filepath.Join(dest, "lib", "a.txt"), "aaa")
+		if _, err := os.Stat(filepath.Join(dest, "lib", "b.txt")); !os.IsNotExist(err) {
+			t.Errorf("expected b.txt to be excluded")
 		}
 	})
 
