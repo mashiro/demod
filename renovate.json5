@@ -12,7 +12,7 @@
   "schedule": ["every weekend"],
   "minimumReleaseAge": "3 days",
   "labels": ["renovate"],
-  // non-major は自動マージ
+  // Auto-merge non-major updates
   "packageRules": [
     {
       "matchUpdateTypes": ["minor", "patch", "digest"],
