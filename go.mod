@@ -3,6 +3,6 @@ module github.com/mashiro/demod
 go 1.25.7
 
 require (
-	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/urfave/cli/v3 v3.6.2 // indirect
+	github.com/BurntSushi/toml v1.6.0
+	github.com/urfave/cli/v3 v3.6.2
 )

@@ -1,0 +1,98 @@
+package demod
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestCopyFile(t *testing.T) {
+	dir := t.TempDir()
+
+	src := filepath.Join(dir, "src.txt")
+	if err := os.WriteFile(src, []byte("hello world"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	dst := filepath.Join(dir, "sub", "dst.txt")
+	if err := copyFile(src, dst); err != nil {
+		t.Fatalf("copyFile: %v", err)
+	}
+
+	got, err := os.ReadFile(dst)
+	if err != nil {
+		t.Fatalf("reading dst: %v", err)
+	}
+	if string(got) != "hello world" {
+		t.Errorf("content = %q, want %q", got, "hello world")
+	}
+}
+
+func TestCopyDir(t *testing.T) {
+	t.Run("without stripPrefix", func(t *testing.T) {
+		srcDir := t.TempDir()
+		destDir := t.TempDir()
+
+		// Create source structure: srcDir/a.txt, srcDir/sub/b.txt
+		if err := os.WriteFile(filepath.Join(srcDir, "a.txt"), []byte("aaa"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(srcDir, "sub"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(srcDir, "sub", "b.txt"), []byte("bbb"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := copyDir(srcDir, destDir, "lib", ""); err != nil {
+			t.Fatalf("copyDir: %v", err)
+		}
+
+		// Files should be at destDir/lib/a.txt, destDir/lib/sub/b.txt
+		assertFileContent(t, filepath.Join(destDir, "lib", "a.txt"), "aaa")
+		assertFileContent(t, filepath.Join(destDir, "lib", "sub", "b.txt"), "bbb")
+	})
+
+	t.Run("with stripPrefix", func(t *testing.T) {
+		srcDir := t.TempDir()
+		destDir := t.TempDir()
+
+		if err := os.WriteFile(filepath.Join(srcDir, "a.txt"), []byte("aaa"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// path="src/lib", stripPrefix="src" → dest path should be "lib"
+		if err := copyDir(srcDir, destDir, "src/lib", "src"); err != nil {
+			t.Fatalf("copyDir: %v", err)
+		}
+
+		assertFileContent(t, filepath.Join(destDir, "lib", "a.txt"), "aaa")
+	})
+
+	t.Run("stripPrefix removes full path", func(t *testing.T) {
+		srcDir := t.TempDir()
+		destDir := t.TempDir()
+
+		if err := os.WriteFile(filepath.Join(srcDir, "a.txt"), []byte("aaa"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// path="src", stripPrefix="src" → dest path should be root
+		if err := copyDir(srcDir, destDir, "src", "src"); err != nil {
+			t.Fatalf("copyDir: %v", err)
+		}
+
+		assertFileContent(t, filepath.Join(destDir, "a.txt"), "aaa")
+	})
+}
+
+func assertFileContent(t *testing.T, path, want string) {
+	t.Helper()
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading %s: %v", path, err)
+	}
+	if string(got) != want {
+		t.Errorf("%s: content = %q, want %q", path, got, want)
+	}
+}

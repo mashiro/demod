@@ -23,7 +23,7 @@ func SyncModule(mod Module) error {
 	if err != nil {
 		return fmt.Errorf("[%s] creating temp dir: %w", mod.Name, err)
 	}
-	defer os.RemoveAll(tmpdir)
+	defer func() { _ = os.RemoveAll(tmpdir) }()
 
 	workdir := filepath.Join(tmpdir, "repo")
 
@@ -76,7 +76,7 @@ func copyDir(src, dest, path, stripPrefix string) error {
 		destPath := path
 		if stripPrefix != "" {
 			destPath = strings.TrimPrefix(destPath, stripPrefix)
-			destPath = strings.TrimPrefix(destPath, "/")
+			destPath = strings.TrimPrefix(destPath, string(filepath.Separator))
 		}
 
 		target := filepath.Join(dest, destPath, rel)
@@ -98,15 +98,16 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
 
 	if _, err := io.Copy(out, in); err != nil {
+		_ = out.Close()
+		_ = os.Remove(dst)
 		return err
 	}
 
