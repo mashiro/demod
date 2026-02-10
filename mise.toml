@@ -1,6 +1,6 @@
 [tools]
-go = "latest"
-"golangci-lint" = "latest"
+go = "1.25.7"
+"golangci-lint" = "2.8.0"
 
 [tasks.build]
 run = "go build ./cmd/demod/"
