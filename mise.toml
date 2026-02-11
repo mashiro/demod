@@ -1,5 +1,6 @@
 [tools]
 go = "1.25.7"
+goreleaser = "2.13.3"
 "golangci-lint" = "2.8.0"
 
 [tasks.build]
@@ -10,3 +11,9 @@ run = "go test ./..."
 
 [tasks.lint]
 run = "golangci-lint run"
+
+[tasks.release-check]
+run = "goreleaser check"
+
+[tasks.release-snapshot]
+run = "goreleaser release --snapshot --clean"
