@@ -15,6 +15,12 @@ Manage everything declaratively with a single TOML file.
 
 ## 📥 Installation
 
+### Download binary
+
+Download the latest binary from [GitHub Releases](https://github.com/mashiro/demod/releases).
+
+### Go install
+
 ```bash
 go install github.com/mashiro/demod/cmd/demod@latest
 ```
@@ -120,4 +126,10 @@ mise run test
 
 # Lint
 mise run lint
+
+# Validate GoReleaser config
+mise run release-check
+
+# Local snapshot build
+mise run release-snapshot
 ```
