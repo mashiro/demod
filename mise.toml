@@ -1,7 +1,7 @@
 [tools]
 go = "1.26.2"
 goreleaser = "2.15.4"
-"golangci-lint" = "2.11.4"
+"golangci-lint" = "2.12.1"
 
 [tasks.build]
 run = "go build ./cmd/demod/"
